@@ -1,13 +1,15 @@
-use cosmwasm_std::{HumanAddr, ReadonlyStorage, Storage, StdError, StdResult};
+use cosmwasm_std::{CanonicalAddr, HumanAddr, ReadonlyStorage, Storage, StdError, StdResult};
 use cosmwasm_storage::{PrefixedStorage};
 use schemars::JsonSchema;
 use secret_toolkit::serialization::{Bincode2, Serde};
 use serde::{Deserialize, Serialize};
 use serde::de::DeserializeOwned;
 use std::{any::type_name};
+use std::collections::HashSet;
 
 // === STATICS ===
 pub static ALIAS_PREFIX: &[u8] = b"alias";
+pub static ALIASES_PREFIX: &[u8] = b"alias";
 pub static CONFIG_KEY: &[u8] = b"config";
 
 // === STRUCTS ===
@@ -51,14 +53,47 @@ impl<'a, S: Storage> AliasStorage<'a, S> {
   }
 }
 
-struct ReadonlyAliasStorageImpl<'a, S: ReadonlyStorage>(&'a S);
-
 impl<'a, S: ReadonlyStorage> ReadonlyAliasStorageImpl<'a, S> {
   pub fn get(&self, key: &String) -> Option<Alias> {
     let alias: Option<Alias> = may_load(self.0, &key.as_bytes()).ok().unwrap();
     alias
   }
 }
+
+pub struct AliasesStorage<'a, S: Storage> {
+  storage: PrefixedStorage<'a, S>
+}
+
+impl<'a, S: Storage> AliasesStorage<'a, S> {
+  pub fn from_storage(storage: &'a mut S) -> Self {
+    Self {
+      storage: PrefixedStorage::new(ALIASES_PREFIX, storage),
+    }
+  }
+
+  // pub fn get_aliases(&mut self, key: &CanonicalAddr) -> HashSet<Vec<u8>> {
+  //   self.as_readonly().get(key)
+  // }
+
+  // private
+
+  // fn as_readonly(&self) -> ReadonlyAliases<PrefixedStorage<S>> {
+  //   ReadonlyAliases(&self.storage)
+  // }
+}
+
+// struct ReadonlyAliases<'a, S: ReadonlyStorage>(&'a S);
+
+// impl<'a, S: ReadonlyStorage> ReadonlyAliases<'a, S> {
+//   pub fn get(&self, key: &CanonicalAddr) -> HashSet<Vec<u8>> {
+//     let aliases: Option<HashSet<Vec<u8>>> = may_load(self.0, &key.as_slice().to_vec()).ok().unwrap();
+//     if let Some(found_aliases) = aliases {
+//       found_aliases
+//     } else {
+//       HashSet::new()
+//     }
+//   }
+// }
 
 // === FUNCTIONS ===
 

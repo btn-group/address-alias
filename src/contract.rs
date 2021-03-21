@@ -48,10 +48,17 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
 ) -> StdResult<Binary> {
   match msg {
     QueryMsg::Show { alias_string } => to_binary(&query_alias(deps, alias_string)?),
+    QueryMsg::Index {} => to_binary(&query_aliases(deps)?)
   }
 }
 
 // === PRIVATE ===
+fn query_aliases<S: Storage, A: Api, Q: Querier>(deps: &mut Extern<S, A, Q>) -> StdResult<ShowResponse> {
+  let mut aliases_storage = AliasStorage::from_storage(&mut deps.storage);
+  let alias_object: Option<Alias> = alias_storage.get_alias(&alias_string);
+  Ok(ShowResponse { alias: alias_object })
+}
+
 fn query_alias<S: Storage, A: Api, Q: Querier>(deps: &mut Extern<S, A, Q>, alias_string: String) -> StdResult<ShowResponse> {
   let mut alias_storage = AliasStorage::from_storage(&mut deps.storage);
   let alias_object: Option<Alias> = alias_storage.get_alias(&alias_string);
