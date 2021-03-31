@@ -122,6 +122,8 @@ secretcli tx compute execute $CONTRACT_INSTANCE_ADDRESS '{"create": { "alias_str
 ```sh
 SECRET_REST_URL=https://secret-2--lcd--full.datahub.figment.io/apikey/<your key here>/
 SECRET_CHAIN_ID=secret-2
+ADDRESS=<your secretaddress that has some scrt tokens in it>
+MNEMONIC=<your secretaddress' mnemonic>
 ```
 6. Initialize as an npm folder in terminal
 ```sh
@@ -131,13 +133,13 @@ npm init -y
 ```sh
 npm install --save secretjs dotenv @iov/crypto
 ```
-8. Put js files into root folder and run in terminal e.g.
-```sh
-node connect.js
-```
-9. Unzip optimized contract as SecretJS expect a .wasm file (secretcli accepts the optimized version)
+8. Unzip optimized contract as SecretJS expect a .wasm file (secretcli accepts the optimized version)
 ```sh
 gunzip contract.wasm.gz
+```
+9. Put js files into root folder and run in terminal e.g.
+```sh
+node deploy.js
 ```
 
 ## References
