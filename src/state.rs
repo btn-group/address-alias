@@ -1,6 +1,5 @@
 use cosmwasm_std::{HumanAddr, ReadonlyStorage, StdResult, Storage};
 use cosmwasm_storage::{PrefixedStorage, ReadonlyPrefixedStorage};
-use schemars::JsonSchema;
 use secret_toolkit::serialization::{Bincode2, Serde};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -10,7 +9,7 @@ pub const ADDRESSES_ALIASES_PREFIX: &[u8] = b"addresses_aliases";
 pub const ALIASES_PREFIX: &[u8] = b"aliases";
 
 // === STRUCTS ===
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Alias {
     pub human_address: HumanAddr,
     pub avatar_url: Option<String>,
