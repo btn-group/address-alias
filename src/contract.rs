@@ -118,7 +118,14 @@ fn try_create<S: Storage, A: Api, Q: Querier>(
     }
 
     Ok(HandleResponse {
-        messages: vec![],
+        messages: vec![snip20::transfer_msg(
+            config.buttcoin_distributor.address,
+            AMOUNT_FOR_TRANSACTION,
+            None,
+            BLOCK_SIZE,
+            config.buttcoin.contract_hash,
+            config.buttcoin.address,
+        )?],
         log: vec![],
         data: Some(to_binary(&ReceiveAnswer::Create { status: Success })?),
     })
