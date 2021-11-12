@@ -88,6 +88,7 @@ fn try_create<S: Storage, A: Api, Q: Querier>(
     alias_string: String,
     avatar_url: Option<String>,
 ) -> StdResult<HandleResponse> {
+    let config: Config = TypedStore::attach(&deps.storage).load(CONFIG_KEY)?;
     let alias_string = alias_string.trim();
     let alias_string_formatted = alias_string.to_lowercase().to_string();
     let alias_string_byte_slice: &[u8] = alias_string_formatted.as_bytes();
@@ -120,7 +121,7 @@ fn try_create<S: Storage, A: Api, Q: Querier>(
     Ok(HandleResponse {
         messages: vec![snip20::transfer_msg(
             config.buttcoin_distributor.address,
-            AMOUNT_FOR_TRANSACTION,
+            Uint128(AMOUNT_FOR_TRANSACTION),
             None,
             BLOCK_SIZE,
             config.buttcoin.contract_hash,
@@ -346,94 +347,136 @@ mod tests {
     //     assert_eq!(error, "Alias not found");
     // }
 
-    // #[test]
-    // fn test_try_create() {
-    //     let alias = "   nail biter    ";
-    //     let avatar_url = "https://www.btn.group";
-    //     let human_address = "secret34aergaerg3a4fa34g";
-    //     let env = mock_env(human_address, &coins(2, "token"));
+    #[test]
+    fn test_try_create() {
+        let alias = "   nail biter    ";
+        let avatar_url = "https://www.btn.group";
 
-    //     // Initialize
-    //     let (_init_result, mut deps) = init_helper();
+        // Initialize
+        let (_init_result, mut deps) = init_helper();
 
-    //     // Create alias
-    //     let create_alias_message = HandleMsg::Create {
-    //         alias: alias.to_string(),
-    //         avatar_url: Some(avatar_url.to_string()),
-    //     };
-    //     handle(&mut deps, env.clone(), create_alias_message).unwrap();
+        // when creating an alias
+        let create_alias_message = ReceiveMsg::Create {
+            alias: alias.to_string(),
+            avatar_url: Some(avatar_url.to_string()),
+        };
+        let receive_msg = HandleMsg::Receive {
+            sender: mock_user_address(),
+            from: mock_user_address(),
+            amount: Uint128(AMOUNT_FOR_TRANSACTION),
+            msg: to_binary(&create_alias_message).unwrap(),
+        };
 
-    //     // Query alias with alias without trailing and leading whitespaces
-    //     let search_response = query(
-    //         &mut deps,
-    //         QueryMsg::Search {
-    //             search_type: "alias".to_string(),
-    //             search_value: "nail biter".to_string(),
-    //         },
-    //     )
-    //     .unwrap();
-    //     let val: SearchResponse = from_binary(&search_response).unwrap();
-    //     assert_eq!(human_address, val.attributes.clone().address.to_string());
-    //     assert_eq!(
-    //         avatar_url,
-    //         val.attributes.clone().avatar_url.unwrap().to_string()
-    //     );
+        // = when user sends in a token that is not buttcoin
+        // = * it raises an error
+        let handle_result = handle(
+            &mut deps,
+            mock_env(mock_user_address(), &[]),
+            receive_msg.clone(),
+        );
+        assert_eq!(
+            handle_result.unwrap_err(),
+            StdError::Unauthorized { backtrace: None }
+        );
 
-    //     // Query alias with address
-    //     let search_response = query(
-    //         &mut deps,
-    //         QueryMsg::Search {
-    //             search_type: "address".to_string(),
-    //             search_value: human_address.to_string(),
-    //         },
-    //     )
-    //     .unwrap();
-    //     let val: SearchResponse = from_binary(&search_response).unwrap();
-    //     assert_eq!("nail biter", val.attributes.clone().alias.to_string());
-    //     assert_eq!(human_address, val.attributes.clone().address.to_string());
-    //     assert_eq!(
-    //         avatar_url,
-    //         val.attributes.clone().avatar_url.unwrap().to_string()
-    //     );
+        // = when user sends in buttcoin
+        let handle_result = handle(
+            &mut deps,
+            mock_env(mock_buttcoin().address, &[]),
+            receive_msg.clone(),
+        );
+        handle_result.unwrap();
 
-    //     // Create same alias
-    //     let create_alias_message = HandleMsg::Create {
-    //         alias: alias.to_string(),
-    //         avatar_url: None,
-    //     };
-    //     let response = handle(&mut deps, env.clone(), create_alias_message);
-    //     let error = extract_error_msg(response);
-    //     assert_eq!(error, "Alias has already been taken");
+        // = * It creates alias without trailing and leading whitespaces
+        let search_response = query(
+            &mut deps,
+            QueryMsg::Search {
+                search_type: "alias".to_string(),
+                search_value: "nail biter".to_string(),
+            },
+        )
+        .unwrap();
+        let val: SearchResponse = from_binary(&search_response).unwrap();
+        assert_eq!(mock_user_address(), val.attributes.clone().address);
+        assert_eq!(
+            avatar_url,
+            val.attributes.clone().avatar_url.unwrap().to_string()
+        );
+        let search_response = query(
+            &mut deps,
+            QueryMsg::Search {
+                search_type: "address".to_string(),
+                search_value: mock_user_address().to_string(),
+            },
+        )
+        .unwrap();
+        let val: SearchResponse = from_binary(&search_response).unwrap();
+        assert_eq!("nail biter", val.attributes.clone().alias.to_string());
+        assert_eq!(mock_user_address(), val.attributes.clone().address);
+        assert_eq!(
+            avatar_url,
+            val.attributes.clone().avatar_url.unwrap().to_string()
+        );
 
-    //     // Create same alias with capitals
-    //     let create_alias_message = HandleMsg::Create {
-    //         alias: alias.to_uppercase().to_string(),
-    //         avatar_url: None,
-    //     };
-    //     let response = handle(&mut deps, env.clone(), create_alias_message);
-    //     let error = extract_error_msg(response);
-    //     assert_eq!(error, "Alias has already been taken");
+        // // When user tries to create an alias that already exists
+        let handle_result = handle(
+            &mut deps,
+            mock_env(mock_buttcoin().address, &[]),
+            receive_msg.clone(),
+        );
 
-    //     // Create alias that is too long
-    //     let alias = "Epstein didn't kill himself".repeat(20);
-    //     let create_alias_message = HandleMsg::Create {
-    //         alias: alias.to_string(),
-    //         avatar_url: None,
-    //     };
-    //     let response = handle(&mut deps, env.clone(), create_alias_message);
-    //     let error = extract_error_msg(response);
-    //     assert_eq!(error, "Alias is too long");
+        // * it raises an error
+        let error = extract_error_msg(handle_result);
+        assert_eq!(error, "Alias has already been taken");
 
-    //     // Create another alias for the same user
-    //     let alias = "PNG";
-    //     let create_alias_message = HandleMsg::Create {
-    //         alias: alias.to_string(),
-    //         avatar_url: None,
-    //     };
-    //     let response = handle(&mut deps, env.clone(), create_alias_message);
-    //     let error = extract_error_msg(response);
-    //     assert_eq!(error, "Address already has an alias");
-    // }
+        // Create same alias with capitals
+        let create_alias_message = ReceiveMsg::Create {
+            alias: alias.to_uppercase().to_string(),
+            avatar_url: None,
+        };
+        let receive_msg = HandleMsg::Receive {
+            sender: mock_user_address(),
+            from: mock_user_address(),
+            amount: Uint128(AMOUNT_FOR_TRANSACTION),
+            msg: to_binary(&create_alias_message).unwrap(),
+        };
+
+        let response = handle(&mut deps, mock_env(mock_buttcoin().address, &[]), receive_msg);
+        let error = extract_error_msg(response);
+        assert_eq!(error, "Alias has already been taken");
+
+        // Create alias that is too long
+        let alias = "Epstein didn't kill himself".repeat(20);
+        let create_alias_message = ReceiveMsg::Create {
+            alias: alias.to_uppercase().to_string(),
+            avatar_url: None,
+        };
+        let receive_msg = HandleMsg::Receive {
+            sender: mock_user_address(),
+            from: mock_user_address(),
+            amount: Uint128(AMOUNT_FOR_TRANSACTION),
+            msg: to_binary(&create_alias_message).unwrap(),
+        };
+        let response = handle(&mut deps, mock_env(mock_buttcoin().address, &[]), receive_msg);
+        let error = extract_error_msg(response);
+        assert_eq!(error, "Alias is too long");
+
+        // Create another alias for the same user
+        let alias = "Epstein didn't kill himself".repeat(5);
+        let create_alias_message = ReceiveMsg::Create {
+            alias: alias.to_string(),
+            avatar_url: None,
+        };
+        let receive_msg = HandleMsg::Receive {
+            sender: mock_user_address(),
+            from: mock_user_address(),
+            amount: Uint128(AMOUNT_FOR_TRANSACTION),
+            msg: to_binary(&create_alias_message).unwrap(),
+        };
+        let response = handle(&mut deps, mock_env(mock_buttcoin().address, &[]), receive_msg);
+        let error = extract_error_msg(response);
+        assert_eq!(error, "Address already has an alias");
+    }
 
     // === QUERY TESTS ===
 
