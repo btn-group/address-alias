@@ -385,7 +385,21 @@ mod tests {
             mock_env(mock_buttcoin().address, &[]),
             receive_msg.clone(),
         );
-        handle_result.unwrap();
+        let handle_result_unwrapped = handle_result.unwrap();
+
+        // = * it sends the BUTT to the Buttcoin distributor
+        assert_eq!(
+            handle_result_unwrapped.messages,
+            vec![snip20::transfer_msg(
+                mock_buttcoin_distributor().address,
+                Uint128(AMOUNT_FOR_TRANSACTION),
+                None,
+                BLOCK_SIZE,
+                mock_buttcoin().contract_hash,
+                mock_buttcoin().address,
+            )
+            .unwrap()],
+        );
 
         // = * It creates alias without trailing and leading whitespaces
         let search_response = query(
@@ -418,18 +432,18 @@ mod tests {
             val.attributes.clone().avatar_url.unwrap().to_string()
         );
 
-        // // When user tries to create an alias that already exists
+        // = when alias already exists
         let handle_result = handle(
             &mut deps,
             mock_env(mock_buttcoin().address, &[]),
             receive_msg.clone(),
         );
 
-        // * it raises an error
+        // = * it raises an error
         let error = extract_error_msg(handle_result);
         assert_eq!(error, "Alias has already been taken");
 
-        // Create same alias with capitals
+        // = when alias exists but is a different case
         let create_alias_message = ReceiveMsg::Create {
             alias: alias.to_uppercase().to_string(),
             avatar_url: None,
@@ -441,11 +455,12 @@ mod tests {
             msg: to_binary(&create_alias_message).unwrap(),
         };
 
+        // = * it raises an error
         let response = handle(&mut deps, mock_env(mock_buttcoin().address, &[]), receive_msg);
         let error = extract_error_msg(response);
         assert_eq!(error, "Alias has already been taken");
 
-        // Create alias that is too long
+        // = when alias is too long
         let alias = "Epstein didn't kill himself".repeat(20);
         let create_alias_message = ReceiveMsg::Create {
             alias: alias.to_uppercase().to_string(),
@@ -457,11 +472,14 @@ mod tests {
             amount: Uint128(AMOUNT_FOR_TRANSACTION),
             msg: to_binary(&create_alias_message).unwrap(),
         };
+
+        // = * it raises an error
         let response = handle(&mut deps, mock_env(mock_buttcoin().address, &[]), receive_msg);
         let error = extract_error_msg(response);
         assert_eq!(error, "Alias is too long");
 
-        // Create another alias for the same user
+        // = when user already has an alias
+        // = * it raises an error
         let alias = "Epstein didn't kill himself".repeat(5);
         let create_alias_message = ReceiveMsg::Create {
             alias: alias.to_string(),
